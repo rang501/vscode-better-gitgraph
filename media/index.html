@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="{{csp}}" />
+    <link rel="stylesheet" href="{{style}}" />
+    <title>Better Git Graph</title>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-line">
+        <span class="header-label">Repo:</span>
+        <span id="hdr-repo" class="header-value">—</span>
+        <span class="header-sep">·</span>
+        <span class="header-label">Branch:</span>
+        <span id="hdr-branch" class="header-value">—</span>
+      </div>
+      <div class="hint">Pick repo &amp; branch from the Better Git Graph sidebar.</div>
+    </div>
+    <div class="toolbar">
+      <label class="search-label">Search
+        <input id="subject-search" type="search" placeholder="commit subject…" />
+      </label>
+      <label>Author
+        <select id="author">
+          <option value="">All</option>
+        </select>
+      </label>
+      <label>Range
+        <select id="preset">
+          <option value="">Any time</option>
+          <option value="1">Last 24h</option>
+          <option value="3">Last 3 days</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+      <label class="custom-range" hidden>From
+        <input type="date" id="since" />
+      </label>
+      <label class="custom-range" hidden>To
+        <input type="date" id="until" />
+      </label>
+      <label>Tag
+        <input id="tag-filter" list="tags-list" placeholder="any" />
+        <datalist id="tags-list"></datalist>
+      </label>
+      <label>Limit
+        <input type="number" id="limit" value="500" min="10" max="5000" step="10" />
+      </label>
+      <button id="refresh">Refresh</button>
+      <span id="status"></span>
+    </div>
+    <div id="ctx-menu" class="ctx-menu" hidden></div>
+    <div class="main">
+      <div class="list-wrap" id="list-wrap" tabindex="0">
+        <table class="commits">
+          <thead>
+            <tr>
+              <th class="col-graph"></th>
+              <th class="col-msg">Subject</th>
+              <th class="col-refs">Refs</th>
+              <th class="col-author">Author</th>
+              <th class="col-date">Date</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div id="empty" class="empty" hidden>No commits.</div>
+      </div>
+      <div class="splitter" id="splitter" hidden></div>
+      <div class="detail-wrap" id="detail-wrap" hidden>
+        <div class="detail-header">
+          <span class="detail-title">Commit</span>
+          <button id="detail-close" class="detail-close" title="Close">✕</button>
+        </div>
+        <div class="detail-section meta-section" id="meta-section">
+          <div id="meta" class="meta">
+            <div class="loading">Loading…</div>
+          </div>
+        </div>
+        <div class="h-splitter" id="h-splitter-1"></div>
+        <div class="detail-section files-section" id="files-section">
+          <div class="files-header">
+            <span>Changed files</span>
+            <span id="files-count" class="count"></span>
+          </div>
+          <div id="files" class="files"></div>
+        </div>
+        <div class="h-splitter" id="h-splitter-2"></div>
+        <div class="detail-section diff-section" id="diff-section">
+          <div class="diff-header">
+            <span id="diff-path" class="diff-path">Select a file to view diff</span>
+            <button id="open-editor" class="open-editor" hidden title="Open native diff editor">↗ editor</button>
+          </div>
+          <div id="diff" class="diff"></div>
+        </div>
+      </div>
+    </div>
+    <script nonce="{{nonce}}" src="{{script}}"></script>
+  </body>
+</html>

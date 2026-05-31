@@ -1,0 +1,87 @@
+{
+  "name": "better-git-graph",
+  "displayName": "Better Git Graph",
+  "description": "Simple, filterable flat git log with multi-repo support.",
+  "version": "0.0.1",
+  "publisher": "adm",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["SCM Providers", "Other"],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "betterGitGraph",
+          "title": "Better Git Graph",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "betterGitGraph": [
+        { "id": "betterGitGraph.repos", "name": "Repositories" },
+        { "id": "betterGitGraph.branches", "name": "Branches" }
+      ]
+    },
+    "commands": [
+      { "command": "betterGitGraph.open", "title": "Better Git Graph: Open Graph", "icon": "$(graph)" },
+      { "command": "betterGitGraph.refreshRepos", "title": "Refresh", "icon": "$(refresh)" },
+      { "command": "betterGitGraph.refreshBranches", "title": "Refresh", "icon": "$(refresh)" },
+      { "command": "betterGitGraph.filterBranches", "title": "Filter branches", "icon": "$(filter)" },
+      { "command": "betterGitGraph.clearBranchFilter", "title": "Clear branch filter", "icon": "$(filter-filled)" },
+      { "command": "betterGitGraph.selectRepo", "title": "Select repo" },
+      { "command": "betterGitGraph.selectBranch", "title": "Select branch" },
+      { "command": "betterGitGraph.copyBranch", "title": "Copy branch name", "icon": "$(copy)" },
+      { "command": "betterGitGraph.checkoutBranch", "title": "Checkout" },
+      { "command": "betterGitGraph.pullBranch", "title": "Pull (fast-forward)" },
+      { "command": "betterGitGraph.pushBranch", "title": "Push" },
+      { "command": "betterGitGraph.mergeBranch", "title": "Merge into current branch" },
+      { "command": "betterGitGraph.renameBranch", "title": "Rename branch" },
+      { "command": "betterGitGraph.deleteBranch", "title": "Delete branch" },
+      { "command": "betterGitGraph.fetchAll", "title": "Fetch all", "icon": "$(cloud-download)" }
+    ],
+    "configuration": {
+      "title": "Better Git Graph",
+      "properties": {
+        "betterGitGraph.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh the graph when the repository's branches, tags, or HEAD change on disk (e.g. after a commit, checkout, or fetch)."
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        { "command": "betterGitGraph.open", "when": "view == betterGitGraph.repos", "group": "navigation@0" },
+        { "command": "betterGitGraph.refreshRepos", "when": "view == betterGitGraph.repos", "group": "navigation@1" },
+        { "command": "betterGitGraph.filterBranches", "when": "view == betterGitGraph.branches && !betterGitGraph.hasFilter", "group": "navigation@0" },
+        { "command": "betterGitGraph.clearBranchFilter", "when": "view == betterGitGraph.branches && betterGitGraph.hasFilter", "group": "navigation@0" },
+        { "command": "betterGitGraph.fetchAll", "when": "view == betterGitGraph.branches", "group": "navigation@1" },
+        { "command": "betterGitGraph.refreshBranches", "when": "view == betterGitGraph.branches", "group": "navigation@2" }
+      ],
+      "view/item/context": [
+        { "command": "betterGitGraph.checkoutBranch", "when": "viewItem == branch || viewItem == remoteBranch", "group": "1_actions@0" },
+        { "command": "betterGitGraph.pullBranch", "when": "viewItem == branch", "group": "1_actions@1" },
+        { "command": "betterGitGraph.pushBranch", "when": "viewItem == branch", "group": "1_actions@2" },
+        { "command": "betterGitGraph.mergeBranch", "when": "viewItem == branch || viewItem == remoteBranch", "group": "1_actions@3" },
+        { "command": "betterGitGraph.renameBranch", "when": "viewItem == branch", "group": "1_actions@4" },
+        { "command": "betterGitGraph.deleteBranch", "when": "viewItem == branch || viewItem == remoteBranch", "group": "2_danger@0" },
+        { "command": "betterGitGraph.copyBranch", "when": "viewItem == branch || viewItem == remoteBranch", "group": "9_copy@0" },
+        { "command": "betterGitGraph.copyBranch", "when": "viewItem == branch || viewItem == remoteBranch", "group": "inline" }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
