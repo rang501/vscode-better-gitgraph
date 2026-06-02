@@ -292,6 +292,44 @@ tr.commit.selected:hover {
   color: inherit;
 }
 
+.ctx-menu .ctx-item.has-submenu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ctx-menu .ctx-arrow {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.ctx-menu.ctx-submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -5px;
+  margin-left: -1px;
+}
+
+.ctx-item.has-submenu:hover > .ctx-menu.ctx-submenu,
+.ctx-menu.ctx-submenu:hover {
+  display: block;
+}
+
+.ctx-menu.ctx-submenu.flip-left {
+  left: auto;
+  right: 100%;
+  margin-left: 0;
+  margin-right: -1px;
+}
+
+.ctx-menu.ctx-submenu.flip-up {
+  top: auto;
+  bottom: -5px;
+}
+
 .empty {
   padding: 24px;
   text-align: center;
@@ -436,6 +474,12 @@ tr.commit.selected:hover {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 3px;
   padding: 0 5px;
+}
+
+.detail-wrap .meta .ref.remote {
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  border: 1px solid var(--vscode-panel-border);
 }
 
 .detail-wrap .copy-btn {

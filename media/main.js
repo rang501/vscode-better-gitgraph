@@ -42,6 +42,7 @@
   let selectedFile = null;
   let selectedFileRow = null;
   let availableTags = [];
+  let remoteBranchSet = new Set();
 
   const LANE_WIDTH = 14;
   const ROW_HEIGHT = 24;
@@ -239,6 +240,18 @@
       .map((r) => r.name);
   }
 
+  function branchesOnCommit(commit) {
+    const names = (commit.refs || [])
+      .map(classifyRef)
+      .filter((r) => r.kind === 'branch' && r.name && r.name !== 'HEAD')
+      .map((r) => r.name);
+    // Local branches first, remotes after; stable within each group.
+    return names
+      .map((name, i) => ({ name, i, remote: remoteBranchSet.has(name) }))
+      .sort((a, b) => (a.remote - b.remote) || (a.i - b.i))
+      .map((b) => b.name);
+  }
+
   function sendQuery() {
     el.status.textContent = 'Loading…';
     vscode.postMessage({ type: 'query', filters: currentToolbarFilters() });
@@ -282,7 +295,7 @@
     vscode.postMessage({ type: 'closeDetail' });
   }
 
-  function renderMeta(d) {
+  function renderMeta(d, contained) {
     el.meta.innerHTML = '';
     const subject = document.createElement('div');
     subject.className = 'subject';
@@ -343,6 +356,28 @@
         value.appendChild(span);
       }
       el.meta.appendChild(tagsRow);
+    }
+
+    const containedLocal = (contained && contained.local) || [];
+    const containedRemote = (contained && contained.remote) || [];
+    if (containedLocal.length || containedRemote.length) {
+      const row = metaRow('Contained in', '');
+      const value = row.querySelector('.value');
+      for (const name of containedLocal) {
+        const span = document.createElement('span');
+        span.className = 'ref';
+        span.textContent = name;
+        value.appendChild(span);
+      }
+      for (const name of containedRemote) {
+        const span = document.createElement('span');
+        span.className = 'ref remote';
+        span.textContent = name;
+        value.appendChild(span);
+      }
+      el.meta.appendChild(row);
+    } else if (contained) {
+      el.meta.appendChild(metaRow('Contained in', 'no branches'));
     }
 
     if (d.body && d.body.trim()) {
@@ -613,15 +648,38 @@
 
   function showContextMenu(x, y, commit) {
     const tags = tagsOnCommit(commit);
+    const branches = branchesOnCommit(commit);
+    const branchAction = (action, branch) => vscode.postMessage({ type: 'branchAction', action, branch });
     const items = [
       { label: 'Checkout commit…', action: () => vscode.postMessage({ type: 'checkoutCommit', hash: commit.hash }) },
       { label: 'Create branch here…', action: () => vscode.postMessage({ type: 'createBranch', hash: commit.hash }) },
       { label: 'Cherry-pick commit…', action: () => vscode.postMessage({ type: 'cherryPick', hash: commit.hash }) },
       { label: 'Revert commit…', action: () => vscode.postMessage({ type: 'revert', hash: commit.hash }) },
       { label: 'Reset current branch to here…', action: () => vscode.postMessage({ type: 'reset', hash: commit.hash }) },
-      { sep: true },
-      { label: 'Add tag here…', action: () => vscode.postMessage({ type: 'addTag', hash: commit.hash }) },
     ];
+
+    if (branches.length) {
+      items.push({ sep: true });
+      for (const br of branches) {
+        items.push({
+          label: `Branch '${br}'`,
+          children: [
+            { label: 'Checkout', action: () => branchAction('checkout', br) },
+            { label: 'Pull (fast-forward)', action: () => branchAction('pull', br) },
+            { label: 'Push', action: () => branchAction('push', br) },
+            { label: 'Merge into current', action: () => branchAction('merge', br) },
+            { sep: true },
+            { label: 'Rename…', action: () => branchAction('rename', br) },
+            { label: 'Delete', action: () => branchAction('delete', br) },
+            { sep: true },
+            { label: 'Copy name', action: () => copy(br) },
+          ],
+        });
+      }
+    }
+
+    items.push({ sep: true });
+    items.push({ label: 'Add tag here…', action: () => vscode.postMessage({ type: 'addTag', hash: commit.hash }) });
     if (availableTags.length) {
       items.push({ label: 'Move tag here…', action: () => vscode.postMessage({ type: 'moveTag', hash: commit.hash }) });
     }
@@ -640,22 +698,7 @@
     items.push({ label: 'Copy commit hash', action: () => copy(commit.hash) });
 
     el.ctxMenu.innerHTML = '';
-    for (const item of items) {
-      if (item.sep) {
-        const sep = document.createElement('div');
-        sep.className = 'ctx-sep';
-        el.ctxMenu.appendChild(sep);
-        continue;
-      }
-      const it = document.createElement('div');
-      it.className = 'ctx-item';
-      it.textContent = item.label;
-      it.addEventListener('click', () => {
-        hideContextMenu();
-        item.action();
-      });
-      el.ctxMenu.appendChild(it);
-    }
+    renderMenuItems(el.ctxMenu, items);
 
     el.ctxMenu.hidden = false;
     el.ctxMenu.style.left = '0px';
@@ -665,6 +708,48 @@
     const maxY = window.innerHeight - rect.height - 4;
     el.ctxMenu.style.left = Math.min(x, maxX) + 'px';
     el.ctxMenu.style.top = Math.min(y, maxY) + 'px';
+  }
+
+  function renderMenuItems(container, items) {
+    for (const item of items) {
+      if (item.sep) {
+        const sep = document.createElement('div');
+        sep.className = 'ctx-sep';
+        container.appendChild(sep);
+        continue;
+      }
+      const it = document.createElement('div');
+      it.className = 'ctx-item';
+      if (item.children) {
+        it.classList.add('has-submenu');
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        const arrow = document.createElement('span');
+        arrow.className = 'ctx-arrow';
+        arrow.textContent = '▸';
+        it.append(label, arrow);
+        const sub = document.createElement('div');
+        sub.className = 'ctx-menu ctx-submenu';
+        renderMenuItems(sub, item.children);
+        it.appendChild(sub);
+        it.addEventListener('mouseenter', () => positionSubmenu(it, sub));
+      } else {
+        it.textContent = item.label;
+        it.addEventListener('click', () => {
+          hideContextMenu();
+          item.action();
+        });
+      }
+      container.appendChild(it);
+    }
+  }
+
+  function positionSubmenu(parentItem, sub) {
+    sub.classList.remove('flip-left', 'flip-up');
+    const p = parentItem.getBoundingClientRect();
+    const s = sub.getBoundingClientRect();
+    if (p.right + s.width > window.innerWidth - 4) sub.classList.add('flip-left');
+    if (p.top + s.height > window.innerHeight - 4) sub.classList.add('flip-up');
   }
 
   function hideContextMenu() {
@@ -807,6 +892,7 @@
         el.hdrBranch.textContent = msg.branch === '__all__' ? 'all branches' : msg.branch;
         setOptions(el.author, msg.authors, { withAll: true, preserve: true });
         availableTags = msg.tags || [];
+        remoteBranchSet = new Set(msg.remoteBranches || []);
         el.tagsList.innerHTML = '';
         for (const t of availableTags) {
           const o = document.createElement('option');
@@ -829,7 +915,7 @@
           el.filesCount.textContent = '';
           break;
         }
-        renderMeta(msg.details);
+        renderMeta(msg.details, msg.contained);
         renderFiles(msg.files);
         break;
       }

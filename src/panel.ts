@@ -7,6 +7,7 @@ import {
   getCommitDetails,
   getCommitFiles,
   getCommitFileDiff,
+  branchesContaining,
   CommitFile,
   createTag,
   deleteTag,
@@ -20,7 +21,17 @@ import {
   ResetMode,
 } from './gitService';
 import { AppState, ALL_BRANCHES } from './state';
+import {
+  checkoutBranch,
+  pullBranch,
+  pushBranch,
+  mergeBranch,
+  renameBranchAction,
+  deleteBranchAction,
+} from './branchActions';
 import { makeUri } from './contentProvider';
+
+type BranchAction = 'checkout' | 'pull' | 'push' | 'merge' | 'rename' | 'delete';
 
 type InMessage =
   | { type: 'init' }
@@ -38,7 +49,8 @@ type InMessage =
   | { type: 'createBranch'; hash: string }
   | { type: 'cherryPick'; hash: string }
   | { type: 'revert'; hash: string }
-  | { type: 'reset'; hash: string };
+  | { type: 'reset'; hash: string }
+  | { type: 'branchAction'; action: BranchAction; branch: string };
 
 interface ToolbarFilters {
   author?: string;
@@ -157,6 +169,10 @@ export class GraphPanel {
           await this.handleReset(msg.hash);
           return;
         }
+        case 'branchAction': {
+          await this.handleBranchAction(msg.action, msg.branch);
+          return;
+        }
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -173,6 +189,7 @@ export class GraphPanel {
       branch: this.state.selection.branch,
       authors: this.state.authors,
       tags: this.state.tags,
+      remoteBranches: this.state.branches.filter((b) => b.isRemote).map((b) => b.name),
     });
     void this.runQuery(this.lastToolbar);
   }
@@ -199,12 +216,13 @@ export class GraphPanel {
     if (!repo) return;
     this.detailSha = sha;
     try {
-      const [details, files] = await Promise.all([
+      const [details, files, contained] = await Promise.all([
         getCommitDetails(repo.path, sha),
         getCommitFiles(repo.path, sha),
+        branchesContaining(repo.path, sha),
       ]);
       if (this.detailSha !== sha) return;
-      this.post({ type: 'commit', details, files });
+      this.post({ type: 'commit', details, files, contained });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       this.post({ type: 'commit', error: message });
@@ -387,6 +405,19 @@ export class GraphPanel {
     const confirm = await vscode.window.showWarningMessage(warning, { modal: true }, action);
     if (confirm !== action) return;
     await this.runRepoOp(`Resetting '${current}' to ${short}`, () => resetTo(repo.path, hash, pick.mode), `Reset '${current}' to ${short}.`);
+  }
+
+  private async handleBranchAction(action: BranchAction, branch: string) {
+    const repo = this.state.selection.repo;
+    if (!repo) return;
+    switch (action) {
+      case 'checkout': return checkoutBranch(this.state, repo.path, branch);
+      case 'pull': return pullBranch(this.state, repo.path, branch);
+      case 'push': return pushBranch(this.state, repo.path, branch);
+      case 'merge': return mergeBranch(this.state, repo.path, branch);
+      case 'rename': return renameBranchAction(this.state, repo.path, branch);
+      case 'delete': return deleteBranchAction(this.state, repo.path, branch);
+    }
   }
 
   private async handleAddTag(hash: string) {

@@ -243,6 +243,29 @@ export async function moveTag(repo: string, name: string, sha: string): Promise<
   return await run(repo, ['tag', '-f', name, sha]);
 }
 
+export interface ContainingBranches {
+  local: string[];
+  remote: string[];
+}
+
+/** Branches that contain the commit (i.e. the commit is reachable from their tip). */
+export async function branchesContaining(repo: string, sha: string): Promise<ContainingBranches> {
+  const parse = (out: string) =>
+    out
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.endsWith('/HEAD'));
+  try {
+    const [localOut, remoteOut] = await Promise.all([
+      run(repo, ['branch', '--contains', sha, '--format=%(refname:short)']),
+      run(repo, ['branch', '-r', '--contains', sha, '--format=%(refname:short)']),
+    ]);
+    return { local: parse(localOut), remote: parse(remoteOut) };
+  } catch {
+    return { local: [], remote: [] };
+  }
+}
+
 export interface CommitDetails {
   hash: string;
   shortHash: string;
